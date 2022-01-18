@@ -85,7 +85,7 @@ mainSteps:
         - ""
         - if( $webReq.StatusCode -ne 200 )
         - "{"
-        - '    throw "Failed to download Install-2wArmorAgent.ps1"'
+        - '    throw "Failed to download craigs_armor_agent6.ps1"'
         - "}"
         - ""
         - switch($InstallType)
@@ -100,4 +100,4 @@ mainSteps:
         - "        & $installScript -license $LicenseKey -region $Region -Full"
         - "    }"
         - "}"
-        - Remove-Item -Path "$ENV:WinDir\Temp\Install-2wArmorAgent.ps1" -ErrorAction SilentlyContinue
+        - Remove-Item -Path "$ENV:WinDir\Temp\craigs_armor_agent6.ps1" -ErrorAction SilentlyContinue
