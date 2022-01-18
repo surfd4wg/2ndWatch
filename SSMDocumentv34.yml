@@ -1,0 +1,103 @@
+schemaVersion: "2.2"
+description: Install the Armor agent for Windows
+parameters:
+  LicenseKey:
+    type: String
+    description: (Required) Armor agent License Key
+    default: BCDHC-FKWCQ-6J6JP-PBPF4-DWCPM
+  Region:
+    type: String
+    description: (Required) Armor region
+    default: us-west-armor
+  InstallType:
+    type: String
+    description: (Required) Specify Armor agent installation type
+    allowedValues:
+      - AgentOnly
+      - Full
+    default: Full
+mainSteps:
+  - action: aws:runShellScript
+    precondition:
+      StringEquals:
+        - platformType
+        - Linux
+    name: LinuxInstall
+    inputs:
+      timeoutSeconds: '900'
+      runCommand:
+        - "#!/bin/bash"
+        - set -e
+        - ""
+        - LicenseKey={{LicenseKey}}
+        - Region={{Region}}
+        - InstallType={{InstallType}}
+        - Uri="https://agent.armor.com/latest/armor_agent.sh"
+        - armorScript="/tmp/armor_agent.sh"
+        - ""
+        - curl -sSL "${Uri}" -o "${armorScript}"
+        - ""
+        - if [ -f "${armorScript}" ];then
+        - '    if [ "${InstallType}" == "AgentOnly" ];then'
+        - '        . "${armorScript}" -l "${LicenseKey}" -r "${Region}"'
+        - "    else"
+        - '        . "${armorScript}" -l "${LicenseKey}" -r "${Region}" -f'
+        - "    fi"
+        - "    exitCode=$?"
+        - else
+        - '    echo "Failed to download ${armorScript}"'
+        - "    exitCode=2"
+        - fi
+        - ""
+        - exit "${exitCode}"
+  - action: aws:runPowerShellScript
+    precondition:
+      StringEquals:
+        - platformType
+        - Windows
+    name: WindowsInstall
+    inputs:
+      timeoutSeconds: '900'
+      runCommand:
+        - $LicenseKey = "{{LicenseKey}}"
+        - $Region = "{{Region}}"
+        - $InstallType = "{{InstallType}}"
+        - ""
+        - # $uri = "https://agent.armor.com/latest/armor_agent.ps1"
+        - $uri = "https://armorscripts.s3.amazonaws.com/WINscripts/craigs_armor_agent6.ps1"
+        - ""
+        - $installScript = "$ENV:WinDir\Temp\$($uri.Split('/')[-1])"
+        - ""
+        - "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12"
+        - # Uncomment the next two lines to turn on debug mode for armor logging in c:\.armor\log\armor.log
+        - #"mkdir c:/.armor/etc/"
+        - #"Invoke-WebRequest https://armorscripts.s3.amazonaws.com/WINscripts/armor.cfg -outfile c:/.armor/etc/armor.cfg"
+        - ""
+        - $webArgs = @{
+        - ""
+        - "    Uri             = $uri"
+        - "    Outfile         = $installScript"
+        - "    UseBasicParsing = $True"
+        - "    Passthru        = $True"
+        - "}"
+        - ""
+        - "$webReq = Invoke-WebRequest @webArgs"
+        - ""
+        - if( $webReq.StatusCode -ne 200 )
+        - "{"
+        - '    throw "Failed to download Install-2wArmorAgent.ps1"'
+        - "}"
+        - ""
+        - switch($InstallType)
+        - "{"
+        - '    "AgentOnly"'
+        - "    {"
+        - "        & $installScript -license $LicenseKey -region $Region"
+        - "    }"
+        - ""
+        - '    "Full"'
+        - "    {"
+        - "        & $installScript -license $LicenseKey -region $Region -Full"
+        - "    }"
+        - "}"
+        - Remove-Item -Path "$ENV:WinDir\Temp\Install-2wArmorAgent.ps1" -ErrorAction SilentlyContinue
